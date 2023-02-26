@@ -54,10 +54,10 @@ import static com.breakinblocks.bbchat.common.TextUtils.Formatting.RESET;
 
 public final class ChatRelay implements IRelay {
     private static final Logger LOGGER = LogManager.getLogger();
-    private static final String FORMAT_CHAT = BOLD + "[%s]" + RESET + " %s";
-    private static final String FORMAT_LOGIN = BOLD + "%s" + RESET + " joined the server";
-    private static final String FORMAT_LOGOUT = BOLD + "%s" + RESET + " left the server";
-    private static final String FORMAT_ACHIEVEMENT = BOLD + "%s" + RESET + " got " + BOLD + "%s" + RESET + " " + ITALIC + "%s" + RESET;
+    private static final String FORMAT_CHAT = BOLD + "[%s] " + RESET + "<%s>: %s";
+    private static final String FORMAT_LOGIN = BOLD + "%s" + RESET + " joined the " + BOLD + "%s" + RESET + " server";
+    private static final String FORMAT_LOGOUT = BOLD + "%s" + RESET + " left the " + BOLD + "%s" + RESET + " server";
+    private static final String FORMAT_ACHIEVEMENT = BOLD + "[%s] %s" + RESET + " got " + BOLD + "%s" + RESET + " " + ITALIC + "%s" + RESET;
     private static final Pattern REGEX_EMOTE = Pattern.compile(":([A-Za-z0-9_]{2,32}):");
     private static final int MAX_DISCORD_MESSAGE_LENGTH = 2000;
     private static final int MAX_COMMAND_FILE_SIZE = 128 * 1024; // 128 KB should be plenty
@@ -68,6 +68,7 @@ public final class ChatRelay implements IRelay {
     private final long guildId;
     private final long channelId;
     private final long staffRoleId;
+    private final String serverName;
     private final Set<String> commandPrefixes;
     private final Set<String> anyCommands;
     private final ConcurrentLinkedQueue<String> messageQueue = new ConcurrentLinkedQueue<>();
@@ -83,6 +84,7 @@ public final class ChatRelay implements IRelay {
             long channelId,
             long staffRoleId,
             String commandPrefix,
+            String serverName,
             Collection<String> anyCommands,
             Consumer<String> broadcastMessage,
             Supplier<PlayerCountInfo> playerCount,
@@ -125,6 +127,7 @@ public final class ChatRelay implements IRelay {
         this.broadcastMessage = broadcastMessage;
         this.playerCount = playerCount;
         this.commandHandler = commandHandler;
+        this.serverName = serverName;
     }
 
     public static IRelay create(
@@ -133,6 +136,7 @@ public final class ChatRelay implements IRelay {
             String channelId,
             String staffRoleId,
             String commandPrefix,
+            String serverName,
             Collection<String> anyCommands,
             Consumer<String> broadcastMessage,
             Supplier<PlayerCountInfo> playerCount,
@@ -151,7 +155,7 @@ public final class ChatRelay implements IRelay {
                 while (true) {
                     try {
                         LOGGER.info("Logging in to Discord...");
-                        ChatRelay chatRelay = new ChatRelay(botToken, guildIdL, channelIdL, staffRoleIdL, commandPrefix, anyCommands, broadcastMessage, playerCount, commandHandler);
+                        ChatRelay chatRelay = new ChatRelay(botToken, guildIdL, channelIdL, staffRoleIdL, commandPrefix, serverName, anyCommands, broadcastMessage, playerCount, commandHandler);
                         if (proxyRelay.isServerRunning())
                             chatRelay.onStarted();
                         proxyRelay.setRelay(chatRelay);
@@ -242,7 +246,7 @@ public final class ChatRelay implements IRelay {
         Member member = Objects.requireNonNull(event.getMember()); // Should not be null since TextChannel
         String name = member.getEffectiveName();
         String text = event.getMessage().getContentDisplay();
-        String message = String.format("[%s] %s", name, text);
+        String message = String.format("<%s> %s", name, text);
         broadcastMessage.accept(message);
         handlePotentialCommand(member, event.getMessage());
     }
@@ -359,13 +363,13 @@ public final class ChatRelay implements IRelay {
 
     @Override
     public void onStarted() {
-        sendToDiscord("**Server Started**");
+        sendToDiscord("**Server** \"*" + serverName + "*\" **Started**");
         updatePlayerCount(false);
     }
 
     @Override
     public void onStopped() {
-        sendToDiscord("**Server Stopped**");
+        sendToDiscord("**Server** \"*" + serverName + "*\" **Stopped**");
 
         try {
             // Wait for the remaining messages to send with a timeout.
@@ -377,19 +381,19 @@ public final class ChatRelay implements IRelay {
 
     @Override
     public void onChat(String name, String text) {
-        convertAndSendToDiscord(String.format(FORMAT_CHAT, name, text));
+        convertAndSendToDiscord(String.format(FORMAT_CHAT, serverName, name, text));
     }
 
     @Override
     public void onLogin(String name) {
         lastLogin.put(name, System.currentTimeMillis());
-        convertAndSendToDiscord(String.format(FORMAT_LOGIN, name));
+        convertAndSendToDiscord(String.format(FORMAT_LOGIN, name, serverName));
         updatePlayerCount(false);
     }
 
     @Override
     public void onLogout(String name) {
-        convertAndSendToDiscord(String.format(FORMAT_LOGOUT, name));
+        convertAndSendToDiscord(String.format(FORMAT_LOGOUT, name, serverName));
         updatePlayerCount(true);
     }
 
@@ -398,7 +402,7 @@ public final class ChatRelay implements IRelay {
         long now = System.currentTimeMillis();
         if (now < lastLogin.getOrDefault(name, now) + LOGIN_ACHIEVEMENT_DELAY_MILLIS)
             return;
-        convertAndSendToDiscord(String.format(FORMAT_ACHIEVEMENT, name, title, description));
+        convertAndSendToDiscord(String.format(FORMAT_ACHIEVEMENT, serverName, name, title, description));
     }
 
     @Override

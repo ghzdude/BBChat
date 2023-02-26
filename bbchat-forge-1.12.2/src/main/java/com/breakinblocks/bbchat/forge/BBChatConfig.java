@@ -16,6 +16,8 @@ public class BBChatConfig {
     public static String commandPrefix;
     public static String[] anyCommands;
 
+    public static String serverName;
+
     private static void sync() {
         botToken = config.getString(
                 "botToken", Configuration.CATEGORY_GENERAL, "",
@@ -39,6 +41,10 @@ public class BBChatConfig {
         anyCommands = config.getStringList(
                 "anyCommands", Configuration.CATEGORY_GENERAL, new String[]{"list", "forge"},
                 "Anyone can use these commands. Will be run with OP Level 0 (non-operator) if not staff."
+        );
+        serverName = config.getString(
+                "serverName", Configuration.CATEGORY_GENERAL, "Minecraft",
+                "Name of the server that will be used for Discord massages"
         );
 
         if (config.hasChanged()) {
