@@ -55,14 +55,16 @@ import static com.breakinblocks.bbchat.common.TextUtils.Formatting.RESET;
 
 public final class ChatRelay implements IRelay {
     private static final Logger LOGGER = LogManager.getLogger();
-    private static final String FORMAT_CHAT = BOLD + "[%s] " + RESET + "<%s>: %s";
+    private static final String SERVER_IDENTIFIER = "**[*%s*]**";
+    private static final String FORMAT_CHAT = SERVER_IDENTIFIER + " <%s> %s";
+    private static final String FORMAT_LOGIN = SERVER_IDENTIFIER + " %s joined the server";
+    private static final String FORMAT_LOGOUT = SERVER_IDENTIFIER + " %s left the server";
+    private static final String FORMAT_ACHIEVEMENT = SERVER_IDENTIFIER + " %s got " + BOLD + "%s" + RESET + " " + ITALIC + "%s" + RESET;
+    private static final String START_MESSAGE = SERVER_IDENTIFIER + " **Server has started**";
+    private static final String STOP_MESSAGE = SERVER_IDENTIFIER + " **Server has stopped**";
     private static final Pattern BOT_MESSAGE_REGEX = Pattern.compile("\\[[A-Za-z0-9_]\\] \\[[A-Za-z0-9_]\\] [A-Za-z0-9_]");
-    private static final String FORMAT_LOGIN = BOLD + "%s" + RESET + " joined the " + BOLD + "%s" + RESET + " server";
-    private static final String FORMAT_LOGOUT = BOLD + "%s" + RESET + " left the " + BOLD + "%s" + RESET + " server";
-    private static final String FORMAT_ACHIEVEMENT = BOLD + "[%s] %s" + RESET + " got " + BOLD + "%s" + RESET + " " + ITALIC + "%s" + RESET;
-    private static final String START_MESSAGE = "***%s*** **Server has started**";
-    private static final String STOP_MESSAGE = "***%s*** **Server has stopped**";
     private static final Pattern REGEX_EMOTE = Pattern.compile(":([A-Za-z0-9_]{2,32}):");
+    private static final Pattern SERVER_IDENTIFIER_PATTERN = Pattern.compile("[\\[a-zA-Z0-9_\\]]*");
     private static final int MAX_DISCORD_MESSAGE_LENGTH = 2000;
     private static final int MAX_COMMAND_FILE_SIZE = 128 * 1024; // 128 KB should be plenty
     private static final int MAX_MESSAGE_QUEUE_SIZE = 100;
@@ -251,8 +253,10 @@ public final class ChatRelay implements IRelay {
         String text = event.getMessage().getContentDisplay();
 
         if (event.getAuthor().getIdLong() == jda.getSelfUser().getIdLong()) {
-            if (BOT_MESSAGE_REGEX.matcher(text).matches() && !text.startsWith("[" + serverName + "]")) {
-                String message = String.format("[%s [from %s]] %s", name, serverName, text);
+            if (BOT_MESSAGE_REGEX.matcher(text).matches() && !text.startsWith(String.format(SERVER_IDENTIFIER, serverName))) {
+                String otherServer = text.split(SERVER_IDENTIFIER_PATTERN.pattern())[0]; // [ServerName]
+                otherServer = otherServer.substring(1, otherServer.length() - 1); // ServerName
+                String message = String.format(FORMAT_CHAT, otherServer, name, text);
                 broadcastMessage.accept(message, true);
                 return;
             }
@@ -401,13 +405,13 @@ public final class ChatRelay implements IRelay {
     @Override
     public void onLogin(String name) {
         lastLogin.put(name, System.currentTimeMillis());
-        convertAndSendToDiscord(String.format(FORMAT_LOGIN, name, serverName));
+        convertAndSendToDiscord(String.format(FORMAT_LOGIN, serverName, name));
         updatePlayerCount(false);
     }
 
     @Override
     public void onLogout(String name) {
-        convertAndSendToDiscord(String.format(FORMAT_LOGOUT, name, serverName));
+        convertAndSendToDiscord(String.format(FORMAT_LOGOUT, serverName, name));
         updatePlayerCount(true);
     }
 
