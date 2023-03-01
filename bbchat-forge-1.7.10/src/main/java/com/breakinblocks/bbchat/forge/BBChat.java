@@ -89,7 +89,7 @@ public class BBChat {
                 BBChatConfig.staffRoleId,
                 BBChatConfig.commandPrefix,
                 Arrays.stream(BBChatConfig.anyCommands).map(String::toString).collect(Collectors.toList()),
-                msg -> server.getConfigurationManager().sendChatMsgImpl(new ChatComponentText(msg), false),
+                (msg, isBot) -> server.getConfigurationManager().sendChatMsgImpl(new ChatComponentText(msg), false),
                 () -> new PlayerCountInfo(server.getCurrentPlayerCount(), server.getMaxPlayers()),
                 this::handleCommand
         );

@@ -69,7 +69,7 @@ public class BBChat {
                 BBChatConfig.COMMON.staffRoleId.get(),
                 BBChatConfig.COMMON.commandPrefix.get(),
                 BBChatConfig.COMMON.anyCommands.get().stream().map(String::toString).collect(Collectors.toList()),
-                (msg) -> server.getPlayerList().broadcastSystemMessage(Component.literal(msg), false),
+                (msg, isBot) -> server.getPlayerList().broadcastSystemMessage(Component.literal(msg), false),
                 () -> new PlayerCountInfo(server.getPlayerCount(), server.getMaxPlayers()),
                 this::handleCommand
         );

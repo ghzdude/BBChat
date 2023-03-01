@@ -76,7 +76,7 @@ public class BBChat {
                 BBChatConfig.commandPrefix,
                 BBChatConfig.serverName,
                 Arrays.stream(BBChatConfig.anyCommands).map(String::toString).collect(Collectors.toList()),
-                (msg) -> server.getPlayerList().sendMessage(new TextComponentString(msg), false),
+                (msg, isBot) -> server.getPlayerList().sendMessage(new TextComponentString(msg), false),
                 () -> new PlayerCountInfo(server.getCurrentPlayerCount(), server.getMaxPlayers()),
                 this::handleCommand
         );

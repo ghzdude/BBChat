@@ -47,6 +47,7 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.function.BiConsumer;
 
 import static com.breakinblocks.bbchat.common.TextUtils.Formatting.BOLD;
 import static com.breakinblocks.bbchat.common.TextUtils.Formatting.ITALIC;
@@ -55,9 +56,12 @@ import static com.breakinblocks.bbchat.common.TextUtils.Formatting.RESET;
 public final class ChatRelay implements IRelay {
     private static final Logger LOGGER = LogManager.getLogger();
     private static final String FORMAT_CHAT = BOLD + "[%s] " + RESET + "<%s>: %s";
+    private static final Pattern BOT_MESSAGE_REGEX = Pattern.compile("\\[[A-Za-z0-9_]\\] \\[[A-Za-z0-9_]\\] [A-Za-z0-9_]");
     private static final String FORMAT_LOGIN = BOLD + "%s" + RESET + " joined the " + BOLD + "%s" + RESET + " server";
     private static final String FORMAT_LOGOUT = BOLD + "%s" + RESET + " left the " + BOLD + "%s" + RESET + " server";
     private static final String FORMAT_ACHIEVEMENT = BOLD + "[%s] %s" + RESET + " got " + BOLD + "%s" + RESET + " " + ITALIC + "%s" + RESET;
+    private static final String START_MESSAGE = "***%s*** **Server has started**";
+    private static final String STOP_MESSAGE = "***%s*** **Server has stopped**";
     private static final Pattern REGEX_EMOTE = Pattern.compile(":([A-Za-z0-9_]{2,32}):");
     private static final int MAX_DISCORD_MESSAGE_LENGTH = 2000;
     private static final int MAX_COMMAND_FILE_SIZE = 128 * 1024; // 128 KB should be plenty
@@ -73,7 +77,7 @@ public final class ChatRelay implements IRelay {
     private final Set<String> anyCommands;
     private final ConcurrentLinkedQueue<String> messageQueue = new ConcurrentLinkedQueue<>();
     private final Set<CompletableFuture<Message>> messageFutures = ConcurrentHashMap.newKeySet();
-    private final Consumer<String> broadcastMessage;
+    private final BiConsumer<String, Boolean> broadcastMessage;
     private final Supplier<PlayerCountInfo> playerCount;
     private final CommandHandler commandHandler;
     private final Map<String, Long> lastLogin = new HashMap<>();
@@ -86,7 +90,7 @@ public final class ChatRelay implements IRelay {
             String commandPrefix,
             String serverName,
             Collection<String> anyCommands,
-            Consumer<String> broadcastMessage,
+            BiConsumer<String, Boolean> broadcastMessage,
             Supplier<PlayerCountInfo> playerCount,
             CommandHandler commandHandler
     ) throws LoginException {
@@ -138,7 +142,7 @@ public final class ChatRelay implements IRelay {
             String commandPrefix,
             String serverName,
             Collection<String> anyCommands,
-            Consumer<String> broadcastMessage,
+            BiConsumer<String, Boolean> broadcastMessage,
             Supplier<PlayerCountInfo> playerCount,
             CommandHandler commandHandler
     ) {
@@ -242,13 +246,23 @@ public final class ChatRelay implements IRelay {
         if (!event.isFromGuild()) return;
         if (event.getGuild().getIdLong() != guildId) return;
         if (event.getChannel().getIdLong() != channelId) return;
-        if (event.getAuthor().isBot()) return; // Should this just ignore self?
-        Member member = Objects.requireNonNull(event.getMember()); // Should not be null since TextChannel
+        Member member = Objects.requireNonNull(event.getMember());
         String name = member.getEffectiveName();
         String text = event.getMessage().getContentDisplay();
-        String message = String.format("<%s> %s", name, text);
-        broadcastMessage.accept(message);
-        handlePotentialCommand(member, event.getMessage());
+
+        if (event.getAuthor().getIdLong() == jda.getSelfUser().getIdLong()) {
+            if (BOT_MESSAGE_REGEX.matcher(text).matches() && !text.startsWith("[" + serverName + "]")) {
+                String message = String.format("[%s [from %s]] %s", name, serverName, text);
+                broadcastMessage.accept(message, true);
+                return;
+            }
+        }
+
+        if (!event.getAuthor().isBot()) {
+            String message = String.format("[%s] %s", name, text);
+            broadcastMessage.accept(message, false);
+            handlePotentialCommand(member, event.getMessage());
+        }
     }
 
     private void handlePotentialCommand(Member member, Message message) {
@@ -363,13 +377,13 @@ public final class ChatRelay implements IRelay {
 
     @Override
     public void onStarted() {
-        sendToDiscord("**Server** \"*" + serverName + "*\" **Started**");
+        sendToDiscord(String.format(START_MESSAGE, serverName));
         updatePlayerCount(false);
     }
 
     @Override
     public void onStopped() {
-        sendToDiscord("**Server** \"*" + serverName + "*\" **Stopped**");
+        sendToDiscord(String.format(STOP_MESSAGE, serverName));
 
         try {
             // Wait for the remaining messages to send with a timeout.
