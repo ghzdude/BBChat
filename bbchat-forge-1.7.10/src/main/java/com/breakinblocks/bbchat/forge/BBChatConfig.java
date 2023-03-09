@@ -40,6 +40,10 @@ public class BBChatConfig {
                 "anyCommands", Configuration.CATEGORY_GENERAL, new String[]{"list", "forge"},
                 "Anyone can use these commands. Will be run with OP Level 0 (non-operator) if not staff."
         );
+        serverName = config.getString(
+                "serverName", Configuration.CATEGORY_GENERAL, "Minecraft Server",
+                "Name of the server that will be used for Discord massages"
+        );
 
         if (config.hasChanged()) {
             config.save();
