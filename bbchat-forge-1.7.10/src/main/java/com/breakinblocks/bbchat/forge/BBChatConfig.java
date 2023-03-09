@@ -15,6 +15,7 @@ public class BBChatConfig {
     public static String staffRoleId;
     public static String commandPrefix;
     public static String[] anyCommands;
+    public static String serverName;
 
     private static void sync() {
         botToken = config.getString(
