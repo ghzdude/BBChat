@@ -31,19 +31,13 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.CharBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -57,12 +51,14 @@ public final class ChatRelay implements IRelay {
     private static final Logger LOGGER = LogManager.getLogger();
     private static final String SERVER_IDENTIFIER = "**[*%s*]**";
     private static final String FORMAT_CHAT = SERVER_IDENTIFIER + " <%s> %s";
+    private static final String FORMAT_MINECRAFT_CHAT = BOLD + "[" + ITALIC + "%s" + RESET + BOLD + "]" + RESET + " <%s> %s";
     private static final String FORMAT_LOGIN = SERVER_IDENTIFIER + " %s joined the server";
     private static final String FORMAT_LOGOUT = SERVER_IDENTIFIER + " %s left the server";
     private static final String FORMAT_ACHIEVEMENT = SERVER_IDENTIFIER + " %s got " + BOLD + "%s" + RESET + " " + ITALIC + "%s" + RESET;
     private static final String START_MESSAGE = SERVER_IDENTIFIER + " **Server has started**";
     private static final String STOP_MESSAGE = SERVER_IDENTIFIER + " **Server has stopped**";
     private static final Pattern BOT_MESSAGE_REGEX = Pattern.compile("\\[[A-Za-z0-9_]\\] \\[[A-Za-z0-9_]\\] [A-Za-z0-9_]");
+    private static final String EXTRACT_OTHER_MESSAGE = "\\*\\*\\[\\*|\\*\\]\\*\\* |<|> ";
     private static final Pattern REGEX_EMOTE = Pattern.compile(":([A-Za-z0-9_]{2,32}):");
     private static final Pattern SERVER_IDENTIFIER_PATTERN = Pattern.compile("[\\[a-zA-Z0-9_\\]]*");
     private static final int MAX_DISCORD_MESSAGE_LENGTH = 2000;
@@ -253,10 +249,18 @@ public final class ChatRelay implements IRelay {
         String text = event.getMessage().getContentDisplay();
 
         if (event.getAuthor().getIdLong() == jda.getSelfUser().getIdLong()) {
-            if (BOT_MESSAGE_REGEX.matcher(text).matches() && !text.startsWith(String.format(SERVER_IDENTIFIER, serverName))) {
-                String otherServer = text.split(SERVER_IDENTIFIER_PATTERN.pattern())[0]; // [ServerName]
-                otherServer = otherServer.substring(1, otherServer.length() - 1); // ServerName
-                String message = String.format(FORMAT_CHAT, otherServer, name, text);
+            if (!text.contains(String.format(SERVER_IDENTIFIER, serverName))) {
+
+                List<String> otherMessage = new ArrayList<>(Arrays.asList(text.split(EXTRACT_OTHER_MESSAGE)));
+                // "", <serverName>, "", <userName>, <message>
+                otherMessage.removeIf(String::isEmpty);
+
+                if (otherMessage.size() != 3)
+                    return;
+                // LOGGER.warn(String.format("Message [%s] sent from [%s] server has been received", otherMessage[4], otherMessage[1]));
+
+                // <serverName>, <userName>, <message>
+                String message = String.format(FORMAT_MINECRAFT_CHAT, otherMessage.get(0), otherMessage.get(1), otherMessage.get(2));
                 broadcastMessage.accept(message, true);
                 return;
             }
