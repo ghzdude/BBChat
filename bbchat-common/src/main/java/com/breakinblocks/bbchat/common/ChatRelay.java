@@ -251,13 +251,12 @@ public final class ChatRelay implements IRelay {
         if (event.getAuthor().getIdLong() == jda.getSelfUser().getIdLong()) {
             if (!text.contains(String.format(SERVER_IDENTIFIER, serverName))) {
 
-                List<String> otherMessage = new ArrayList<>(Arrays.asList(text.split(EXTRACT_OTHER_MESSAGE)));
                 // "", <serverName>, "", <userName>, <message>
+                List<String> otherMessage = new ArrayList<>(Arrays.asList(text.split(EXTRACT_OTHER_MESSAGE)));
                 otherMessage.removeIf(String::isEmpty);
 
                 if (otherMessage.size() != 3)
                     return;
-                // LOGGER.warn(String.format("Message [%s] sent from [%s] server has been received", otherMessage[4], otherMessage[1]));
 
                 // <serverName>, <userName>, <message>
                 String message = String.format(FORMAT_MINECRAFT_CHAT, otherMessage.get(0), otherMessage.get(1), otherMessage.get(2));
