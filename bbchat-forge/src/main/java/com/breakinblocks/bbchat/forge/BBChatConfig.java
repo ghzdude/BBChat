@@ -25,6 +25,7 @@ public class BBChatConfig {
         public final ConfigValue<String> channelId;
         public final ConfigValue<String> staffRoleId;
         public final ConfigValue<String> commandPrefix;
+        public final ConfigValue<String> serverName;
         public final ConfigValue<List<? extends String>> anyCommands;
 
         public Common(Builder builder) {
@@ -49,6 +50,10 @@ public class BBChatConfig {
                     .worldRestart()
                     .comment("Anyone can use these commands. Will be run with OP Level 0 (non-operator) if not staff.")
                     .defineList("anyCommands", Arrays.asList("list", "forge"), Objects::nonNull);
+            serverName = builder
+                    .worldRestart()
+                    .comment("Name of the server that will be used for Discord massages")
+                    .define("serverName", "Minecraft Server");
         }
     }
 }

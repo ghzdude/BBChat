@@ -55,7 +55,10 @@ public class BBChat {
     public BBChat() {
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, BBChatConfig.commonSpec);
         // Ignore this mod being installed on either side
-        ModLoadingContext.get().registerExtensionPoint(IExtensionPoint.DisplayTest.class, () -> new IExtensionPoint.DisplayTest(() -> NetworkConstants.IGNORESERVERONLY, (a, b) -> true));
+        ModLoadingContext.get().registerExtensionPoint(
+                IExtensionPoint.DisplayTest.class,
+                () -> new IExtensionPoint.DisplayTest(() -> NetworkConstants.IGNORESERVERONLY, (a, b) -> true)
+        );
         MinecraftForge.EVENT_BUS.register(this);
     }
 
@@ -68,6 +71,7 @@ public class BBChat {
                 BBChatConfig.COMMON.channelId.get(),
                 BBChatConfig.COMMON.staffRoleId.get(),
                 BBChatConfig.COMMON.commandPrefix.get(),
+                BBChatConfig.COMMON.serverName.get(),
                 BBChatConfig.COMMON.anyCommands.get().stream().map(String::toString).collect(Collectors.toList()),
                 (msg, isBot) -> server.getPlayerList().broadcastSystemMessage(Component.literal(msg), false),
                 () -> new PlayerCountInfo(server.getPlayerCount(), server.getMaxPlayers()),
