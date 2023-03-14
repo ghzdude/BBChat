@@ -252,7 +252,8 @@ public final class ChatRelay implements IRelay {
             if (!text.contains(String.format(SERVER_IDENTIFIER, serverName))) {
 
                 // "", <serverName>, "", <userName>, <message>
-                List<String> otherMessage = new ArrayList<>(Arrays.asList(text.split(EXTRACT_OTHER_MESSAGE)));
+                // there's an issue here if the message contains < > * [ or ]
+                List<String> otherMessage = new ArrayList<>(Arrays.asList(text.split(EXTRACT_OTHER_MESSAGE, 5)));
                 otherMessage.removeIf(String::isEmpty);
 
                 if (otherMessage.size() != 3)
